@@ -1,0 +1,2389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ECAS Statement Parser - Portfolio Analytics</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.js" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #3b82f6;
+            --primary-dark: #1d4ed8;
+            --success-color: #059669;
+            --danger-color: #dc2626;
+            --warning-color: #d97706;
+            --secondary-color: #6b7280;
+            --background-color: #f8fafc;
+            --surface-color: #ffffff;
+            --surface-secondary: #f9fafb;
+            --text-primary: #111827;
+            --text-secondary: #4b5563;
+            --border-color: #e5e7eb;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --radius-sm: 0.375rem;
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --background-color: #0f172a;
+                --surface-color: #1e293b;
+                --surface-secondary: #334155;
+                --text-primary: #f1f5f9;
+                --text-secondary: #cbd5e1;
+                --border-color: #334155;
+                --success-color: #10b981;
+                --danger-color: #ef4444;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .app-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            color: white;
+        }
+
+        .app-header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 0 0 0.5rem 0;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .app-header p {
+            font-size: 1.125rem;
+            opacity: 0.9;
+            margin: 0;
+        }
+
+        #upload-form {
+            background: var(--surface-color);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border-color);
+        }
+
+        #upload-form h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 0 0 1.5rem 0;
+            color: var(--text-primary);
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            font-size: 1rem;
+            transition: all 0.2s ease;
+            background: var(--surface-color);
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .password-input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .password-input-wrapper .form-control {
+            padding-right: 3rem;
+            color: var(--text-primary);
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 0.75rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.25rem;
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            border-radius: var(--radius-sm);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 2rem;
+            height: 2rem;
+        }
+
+        .password-toggle:hover {
+            background: var(--hover-color);
+            color: var(--text-primary);
+        }
+
+        .password-toggle:focus {
+            outline: 2px solid var(--primary-color);
+            outline-offset: 2px;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-input-display {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            border: 2px dashed var(--border-color);
+            border-radius: var(--radius-md);
+            transition: all 0.2s ease;
+            background: var(--surface-color);
+            color: var(--text-primary);
+        }
+
+        .file-input-display:hover {
+            border-color: var(--primary-color);
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .file-input-display.has-file {
+            border-color: var(--success-color);
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 500;
+            border-radius: var(--radius-md);
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-primary:disabled {
+            background: var(--secondary-color);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #results {
+            margin-top: 2rem;
+        }
+
+        .card {
+            background: var(--surface-color);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color);
+            margin-bottom: 1.5rem;
+        }
+
+        .summary-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin-bottom: 2rem;
+        }
+
+        .summary-card h2 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin: 0 0 1.5rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .summary-item {
+            text-align: center;
+        }
+
+        .summary-item .label {
+            font-size: 0.875rem;
+            opacity: 0.8;
+            margin-bottom: 0.5rem;
+        }
+
+        .summary-item .value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .summary-item .change {
+            font-size: 0.875rem;
+            opacity: 0.9;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--surface-color);
+            border-radius: var(--radius-md);
+            padding: 1.25rem;
+            text-align: center;
+            border: 1px solid var(--border-color);
+            transition: all 0.2s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .charts-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .chart-card {
+            background: var(--surface-color);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color);
+        }
+
+        .chart-card h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: 0 0 1rem 0;
+            color: var(--text-primary);
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+        }
+
+        .chart-wrapper.large {
+            height: 400px;
+        }
+
+        .fund-card {
+            background: var(--surface-color);
+            border-radius: var(--radius-lg);
+            margin: 1rem 0;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color);
+            transition: all 0.2s ease;
+        }
+
+        .fund-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .fund-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+
+        .fund-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: 0;
+            color: var(--text-primary);
+        }
+
+        .fund-allocation {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .fund-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .detail-label {
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .detail-value {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .positive {
+            color: var(--success-color);
+            font-weight: 600;
+        }
+
+        .negative {
+            color: var(--danger-color);
+            font-weight: 600;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .controls-bar {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .control-group label {
+            font-weight: 500;
+            font-size: 0.875rem;
+            color: var(--text-primary) !important;
+        }
+
+        .controls-bar .control-group label {
+            color: var(--text-primary) !important;
+        }
+
+        select {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            background: var(--surface-color);
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            min-width: 150px;
+        }
+
+        select option {
+            background: var(--surface-color);
+            color: var(--text-primary);
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--surface-color);
+        }
+
+        th, td {
+            text-align: left;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background: var(--surface-secondary);
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+
+        td {
+            font-size: 0.875rem;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            gap: 0.5rem;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f4f6;
+            border-top: 2px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 1rem;
+            border-radius: var(--radius-md);
+            margin: 1rem 0;
+        }
+
+        .success-message {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #166534;
+            padding: 1rem;
+            border-radius: var(--radius-md);
+            margin: 1rem 0;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+
+            .app-header h1 {
+                font-size: 2rem;
+            }
+
+            .charts-container {
+                grid-template-columns: 1fr;
+            }
+
+            .fund-details {
+                grid-template-columns: 1fr;
+            }
+
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .controls-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .tabs {
+                overflow-x: auto;
+            }
+
+            .tab-button {
+                white-space: nowrap;
+                flex: none;
+                min-width: 120px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .fund-header {
+                flex-direction: column;
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="app-header">
+        <h1>📊 Portfolio Analytics</h1>
+        <p>Comprehensive ECAS Statement Analysis & Visualization</p>
+    </header>
+    
+    <div class="card" id="upload-form">
+        <h2>📄 Upload ECAS Statement</h2>
+        <form id="upload-form-element">
+            <div class="form-group">
+                <label for="password">Statement Password</label>
+                <div class="password-input-wrapper">
+                    <input type="password" id="password" class="form-control" placeholder="Enter your statement password" required>
+                    <button type="button" class="password-toggle" onclick="togglePasswordVisibility()" title="Show/Hide Password">
+                        <span id="password-toggle-icon">👁️</span>
+                    </button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>ECAS Statement File</label>
+                <div class="file-input-wrapper">
+                    <input type="file" id="file-input" accept=".pdf" required>
+                    <div class="file-input-display" id="file-display">
+                        <div>
+                            <div>📁 Choose PDF file or drag and drop</div>
+                            <div style="font-size: 0.875rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                                Maximum file size: 10MB
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary" id="parse-btn">
+                <span id="btn-text">🚀 Parse Statement</span>
+                <div class="spinner" id="btn-spinner" style="display: none;"></div>
+            </button>
+        </form>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        // XIRR calculation function
+        function calculateXIRR(cashflows) {
+            function xnpv(rate, values, dates) {
+                const firstDate = new Date(dates[0]);
+                return values.reduce((acc, value, i) => {
+                    const daysDiff = (new Date(dates[i]) - firstDate) / (1000 * 60 * 60 * 24);
+                    return acc + value / Math.pow(1 + rate, daysDiff / 365);
+                }, 0);
+            }
+
+            function deriv(rate, values, dates) {
+                const firstDate = new Date(dates[0]);
+                return values.reduce((acc, value, i) => {
+                    const daysDiff = (new Date(dates[i]) - firstDate) / (1000 * 60 * 60 * 24);
+                    return acc - (daysDiff / 365) * value / Math.pow(1 + rate, daysDiff / 365 + 1);
+                }, 0);
+            }
+
+            if (!cashflows.amounts.length) return null;
+
+            let rate = 0.1; // Initial guess
+            const maxIter = 100;
+            const tolerance = 0.0000001;
+
+            for (let i = 0; i < maxIter; i++) {
+                const v = xnpv(rate, cashflows.amounts, cashflows.dates);
+                if (Math.abs(v) < tolerance) {
+                    return rate;
+                }
+                const d = deriv(rate, cashflows.amounts, cashflows.dates);
+                if (d === 0) break;
+                rate = rate - v / d;
+            }
+            return null; // Failed to converge
+        }
+
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-IN', {
+                style: 'currency',
+                currency: 'INR'
+            }).format(amount);
+        }
+
+        // MF API functions to get historical NAV data
+        async function getAllHistoricalNAV(schemeCode) {
+            try {
+                const response = await fetch(`https://api.mfapi.in/mf/${schemeCode}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (!data || !data.data || !Array.isArray(data.data)) {
+                    return null;
+                }
+                
+                // Convert to a Map for fast date lookups
+                const navMap = new Map();
+                for (const record of data.data) {
+                    // Parse date in DD-MM-YYYY format
+                    const [day, month, year] = record.date.split('-').map(Number);
+                    const recordDate = new Date(year, month - 1, day);
+                    const dateKey = recordDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+                    navMap.set(dateKey, parseFloat(record.nav));
+                }
+                
+                return navMap;
+            } catch (error) {
+                console.warn(`Failed to fetch NAV data for scheme ${schemeCode}:`, error);
+                return null;
+            }
+        }
+
+        // Function to find NAV for a specific date from cached data
+        function findNAVForDate(navMap, targetDate) {
+            if (!navMap) return null;
+            
+            const targetTime = targetDate.getTime();
+            let closestNav = null;
+            let closestTimeDiff = Infinity;
+            
+            for (const [dateKey, nav] of navMap) {
+                const recordDate = new Date(dateKey);
+                const timeDiff = Math.abs(recordDate.getTime() - targetTime);
+                
+                // Only consider dates on or before target date (no future NAVs)
+                if (recordDate <= targetDate && timeDiff < closestTimeDiff) {
+                    closestTimeDiff = timeDiff;
+                    closestNav = nav;
+                }
+            }
+            
+            return closestNav;
+        }
+
+        // Enhanced function to get NAV for a specific month-end
+        function getMonthEndNAVFromCache(navMap, year, month) {
+            // Get the last day of the month
+            const lastDay = new Date(year, month, 0); // month is 1-based in this context
+            
+            // Try to get NAV for the last few days of the month (in case of weekends/holidays)
+            for (let i = 0; i < 5; i++) {
+                const tryDate = new Date(lastDay.getTime() - (i * 24 * 60 * 60 * 1000));
+                const nav = findNAVForDate(navMap, tryDate);
+                if (nav !== null) {
+                    return nav;
+                }
+            }
+            
+            return null;
+        }
+
+        function togglePasswordVisibility() {
+            const passwordInput = document.getElementById('password');
+            const toggleIcon = document.getElementById('password-toggle-icon');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.textContent = '🙈';
+                toggleIcon.parentElement.title = 'Hide Password';
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.textContent = '👁️';
+                toggleIcon.parentElement.title = 'Show Password';
+            }
+        }
+
+        // Keep track of chart instances and all funds data
+        let chartInstances = [];
+        let allFundsData = []; // Global variable to store all funds
+        let currentFilterValue = 'all'; // Track current filter
+        let globalNavCache = new Map(); // Global cache for NAV data by scheme code
+
+        function clearExistingCharts() {
+            // First try to get instances directly from Chart.js
+            const existingCharts = Object.values(Chart.instances || {});
+            existingCharts.forEach(chart => {
+                if (chart && chart.destroy) {
+                    try {
+                        chart.destroy();
+                    } catch (e) {
+                        console.warn('Error destroying chart:', e);
+                    }
+                }
+            });
+
+            // Then destroy our tracked instances
+            chartInstances.forEach(chart => {
+                if (chart && chart.destroy) {
+                    try {
+                        chart.destroy();
+                    } catch (e) {
+                        console.warn('Error destroying tracked chart:', e);
+                    }
+                }
+            });
+            chartInstances = []; // Clear the array
+        }
+
+        function getAvailableCategories(funds) {
+            // Simplified categorization - only Equity and Debt
+            const categoryMap = {};
+            
+            funds.forEach(fund => {
+                const name = fund.schemeName.toLowerCase();
+                let category;
+                
+                if (name.includes('debt') || name.includes('bond') || name.includes('gilt') || 
+                    name.includes('income') || name.includes('credit') || name.includes('liquid') || 
+                    name.includes('ultra short') || name.includes('money market') || 
+                    name.includes('overnight') || name.includes('duration')) {
+                    category = 'Debt';
+                } else {
+                    category = 'Equity'; // Everything else is equity (including hybrid, international, etc.)
+                }
+                
+                categoryMap[category] = true;
+            });
+            
+            // Convert to array with value and label
+            const categoryMapping = {
+                'Equity': { value: 'equity', label: 'Equity Funds' },
+                'Debt': { value: 'debt', label: 'Debt Funds' }
+            };
+            
+            return Object.keys(categoryMap)
+                .filter(cat => categoryMapping[cat])
+                .map(cat => categoryMapping[cat])
+                .sort((a, b) => a.label.localeCompare(b.label));
+        }
+
+        function displayResults(data) {
+            clearExistingCharts(); // Clear any existing charts
+            
+            // Clear NAV cache when new data is loaded to ensure fresh API calls
+            globalNavCache.clear();
+            
+            const resultsDiv = document.getElementById('results');
+            if (!data || !data.funds || data.funds.length === 0) {
+                console.error('Invalid data structure:', data);
+                resultsDiv.innerHTML = 'No data found. Check browser console for details.';
+                return;
+            }
+
+            // Store original funds data globally for investment flow chart
+            window.originalFundsData = data.funds;
+
+            const totalValue = data.funds.reduce((sum, fund) => sum + Number(fund.value), 0);
+            const totalCost = data.funds.reduce((sum, fund) => sum + Number(fund.cost), 0);
+            const totalReturns = ((totalValue - totalCost) / totalCost * 100).toFixed(2);
+            const totalGainLoss = totalValue - totalCost;
+            const activeFunds = data.funds.filter(fund => Number(fund.value) > 0);
+            
+            // Calculate totals for active funds (for charts consistency)
+            const activeTotalValue = activeFunds.reduce((sum, fund) => sum + Number(fund.value), 0);
+            const activeTotalCost = activeFunds.reduce((sum, fund) => sum + Number(fund.cost), 0);
+            const activeTotalReturns = ((activeTotalValue - activeTotalCost) / activeTotalCost * 100).toFixed(2);
+            const activeTotalGainLoss = activeTotalValue - activeTotalCost;
+            
+            // Store all funds data globally
+            allFundsData = activeFunds;
+            
+            // Get available categories from the funds
+            const availableCategories = getAvailableCategories(activeFunds);
+            
+            const avgReturns = activeFunds.length > 0 ? 
+                (activeFunds.reduce((sum, fund) => sum + ((Number(fund.value) - Number(fund.cost)) / Number(fund.cost) * 100), 0) / activeFunds.length).toFixed(2) : 0;
+            
+            let html = `
+                <div class="summary-card">
+                    <h2>💼 Portfolio Overview</h2>
+                    <div class="summary-grid">
+                        <div class="summary-item">
+                            <div class="label">Current Value (Active)</div>
+                            <div class="value">${formatCurrency(activeTotalValue)}</div>
+                            <div class="change">Portfolio Worth (Funds with Value > 0)</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="label">Total Investment (Active)</div>
+                            <div class="value">${formatCurrency(activeTotalCost)}</div>
+                            <div class="change">Amount Invested in Active Funds</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="label">Absolute Returns (Active)</div>
+                            <div class="value ${activeTotalReturns >= 0 ? 'positive' : 'negative'}">${activeTotalReturns}%</div>
+                            <div class="change ${activeTotalGainLoss >= 0 ? 'positive' : 'negative'}">
+                                ${activeTotalGainLoss >= 0 ? '+' : ''}${formatCurrency(activeTotalGainLoss)}
+                            </div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="label">Active Funds</div>
+                            <div class="value">${activeFunds.length}</div>
+                            <div class="change">Total Schemes</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value ${avgReturns >= 0 ? 'positive' : 'negative'}">${avgReturns}%</div>
+                        <div class="stat-label">Average Returns</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${activeFunds.filter(f => ((Number(f.value) - Number(f.cost)) / Number(f.cost) * 100) > 0).length}</div>
+                        <div class="stat-label">Profitable Funds</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${activeFunds.filter(f => f.transactions.some(t => t.type === 'PURCHASE_SIP')).length}</div>
+                        <div class="stat-label">SIP Funds</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${Math.max(...activeFunds.map(f => ((Number(f.value) - Number(f.cost)) / Number(f.cost) * 100))).toFixed(1)}%</div>
+                        <div class="stat-label">Best Performer</div>
+                    </div>
+                </div>
+            `;
+
+            // Add controls
+            html += `
+                <div class="controls-bar">
+                    <div class="control-group">
+                        <label for="sort-funds" style="color: var(--text-primary) !important;">📊 Sort Funds:</label>
+                        <select id="sort-funds" onchange="sortFunds(this.value)">
+                            <option value="value-desc" selected>Value (Highest First)</option>
+                            <option value="value-asc">Value (Lowest First)</option>
+                            <option value="returns-desc">XIRR (Highest First)</option>
+                            <option value="returns-asc">XIRR (Lowest First)</option>
+                            <option value="name-asc">Name (A-Z)</option>
+                            <option value="name-desc">Name (Z-A)</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label for="fund-filter" style="color: var(--text-primary) !important;">🔍 Filter by Category:</label>
+                        <select id="fund-filter" onchange="filterFunds(this.value)">
+                            <option value="all">All Funds</option>
+                            ${availableCategories.map(category => 
+                                `<option value="${category.value}">${category.label}</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                </div>
+            `;
+
+            // Use the activeFunds already defined above
+            
+            // Add charts section
+            html += `
+                <div class="charts-container">
+                    <div class="chart-card" style="grid-column: 1 / -1;">
+                        <h3>📈 Portfolio Growth Over Time</h3>
+                        <div class="chart-wrapper large">
+                            <canvas id="portfolioGrowth"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="charts-container">
+                    <div class="chart-card">
+                        <h3>💼 Portfolio Allocation</h3>
+                        <div class="table-wrapper" style="max-height: 400px; overflow-y: auto;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Fund Name</th>
+                                        <th>Invested Value</th>
+                                        <th>Current Value</th>
+                                        <th>Allocation %</th>
+                                        <th>XIRR %</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="allocation-body">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="charts-container">
+                    <div class="chart-card" style="grid-column: 1 / -1;">
+                        <h3>📈 Performance Comparison</h3>
+                        <div class="chart-wrapper large">
+                            <canvas id="fundPerformance"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="charts-container">
+                    <div class="chart-card">
+                        <h3>💰 Investment Flow</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="yearlyInvestment"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <h3>🎯 Asset Category Distribution</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="categoryDistribution"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <h3>📅 SIP vs Lumpsum</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="sipVsLumpsum"></canvas>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            resultsDiv.innerHTML = html;
+
+            // Wait for DOM update and create charts with delay
+            setTimeout(async () => {
+                try {
+                    // Populate allocation table
+                    const allocationBody = document.getElementById('allocation-body');
+                    if (allocationBody) {
+                        allocationBody.innerHTML = activeFunds.map(fund => {
+                            const allocation = (Number(fund.value) / totalValue * 100).toFixed(2);
+                            
+                            // Calculate XIRR for this fund
+                            const cashflows = {
+                                amounts: fund.transactions.map(tx => {
+                                    switch (tx.type) {
+                                        case 'PURCHASE':
+                                        case 'PURCHASE_SIP':
+                                        case 'SWITCH_IN':
+                                        case 'SWITCH_IN_MERGER':
+                                            return -Number(tx.amount);
+                                        case 'REDEMPTION':
+                                        case 'SWITCH_OUT':
+                                        case 'SWITCH_OUT_MERGER':
+                                        case 'DIVIDEND_PAYOUT':
+                                            return Number(tx.amount);
+                                        default:
+                                            return 0;
+                                    }
+                                }).filter(amount => amount !== 0),
+                                dates: fund.transactions
+                                    .filter(tx => ['PURCHASE', 'PURCHASE_SIP', 'SWITCH_IN', 'SWITCH_IN_MERGER', 'REDEMPTION', 'SWITCH_OUT', 'SWITCH_OUT_MERGER', 'DIVIDEND_PAYOUT']
+                                        .includes(tx.type))
+                                    .map(tx => tx.date)
+                            };
+                            // Add current value as the final cashflow
+                            cashflows.amounts.push(Number(fund.value));
+                            cashflows.dates.push(new Date().toISOString().split('T')[0]);
+                            
+                            const xirr = calculateXIRR(cashflows);
+                            const xirrPercentage = xirr ? (xirr * 100).toFixed(2) : 'N/A';
+                            const xirrNumeric = xirr ? (xirr * 100) : 0;
+                            
+                            return `
+                                <tr data-value="${fund.value}" data-returns="${xirrNumeric}" data-name="${fund.schemeName}" data-cost="${fund.cost}">
+                                    <td>${fund.schemeName}</td>
+                                    <td>${formatCurrency(fund.cost)}</td>
+                                    <td>${formatCurrency(fund.value)}</td>
+                                    <td><span class="allocation">${allocation}%</span></td>
+                                    <td><span class="${xirrNumeric >= 0 ? 'positive' : 'negative'}">${xirrPercentage}${xirrPercentage !== 'N/A' ? '%' : ''}</span></td>
+                                </tr>
+                            `;
+                        }).join('');
+                    }
+
+                    // Create non-portfolio charts first (they don't need API data)
+                    const performanceChart = createFundPerformanceChart(activeFunds);
+                    if (performanceChart) chartInstances.push(performanceChart);
+                    
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    
+                    // For investment flow, use ALL funds (including those with 0 current value)
+                    const yearlyChart = createYearlyInvestmentChart(data.funds);
+                    if (yearlyChart) chartInstances.push(yearlyChart);
+                    
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    
+                    const categoryChart = createCategoryDistributionChart(activeFunds);
+                    if (categoryChart) chartInstances.push(categoryChart);
+                    
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    
+                    const sipChart = createSipVsLumpsumChart(activeFunds);
+                    if (sipChart) chartInstances.push(sipChart);
+                    
+                    // Create portfolio growth chart asynchronously (doesn't block other charts)
+                    // Add loading indicator
+                    const portfolioCanvas = document.getElementById('portfolioGrowth');
+                    const ctx = portfolioCanvas.getContext('2d');
+                    ctx.fillStyle = '#6b7280';
+                    ctx.font = '16px system-ui';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Loading portfolio data...', portfolioCanvas.width / 2, portfolioCanvas.height / 2);
+                    
+                    createPortfolioGrowthChart(activeFunds).then(portfolioGrowthChart => {
+                        if (portfolioGrowthChart) chartInstances.push(portfolioGrowthChart);
+                    }).catch(error => {
+                        console.error('Error creating portfolio growth chart:', error);
+                        // Show error message on canvas
+                        ctx.clearRect(0, 0, portfolioCanvas.width, portfolioCanvas.height);
+                        ctx.fillStyle = '#ef4444';
+                        ctx.fillText('Error loading chart data', portfolioCanvas.width / 2, portfolioCanvas.height / 2);
+                    });
+                    
+                    // Sort funds initially by value
+                    sortFunds('value-desc');
+                    
+                    // Set dropdown to show current selection
+                    const sortDropdown = document.getElementById('sort-funds');
+                    if (sortDropdown) sortDropdown.value = 'value-desc';
+                } catch (error) {
+                    console.error('Error creating charts:', error);
+                }
+            }, 100);
+        }
+
+        async function updateChartsWithFilteredData(filteredFunds) {
+            // Clear existing charts
+            clearExistingCharts();
+            
+            // Calculate new totals based on filtered data
+            const totalValue = filteredFunds.reduce((sum, fund) => sum + Number(fund.value), 0);
+            
+            // Update allocation table with filtered data
+            const allocationBody = document.getElementById('allocation-body');
+            if (allocationBody && totalValue > 0) {
+                allocationBody.innerHTML = filteredFunds.map(fund => {
+                    const allocation = (Number(fund.value) / totalValue * 100).toFixed(2);
+                    
+                    // Calculate XIRR for this fund
+                    const cashflows = {
+                        amounts: fund.transactions.map(tx => {
+                            switch (tx.type) {
+                                case 'PURCHASE':
+                                case 'PURCHASE_SIP':
+                                case 'SWITCH_IN':
+                                case 'SWITCH_IN_MERGER':
+                                    return -Number(tx.amount);
+                                case 'REDEMPTION':
+                                case 'SWITCH_OUT':
+                                case 'SWITCH_OUT_MERGER':
+                                case 'DIVIDEND_PAYOUT':
+                                    return Number(tx.amount);
+                                default:
+                                    return 0;
+                            }
+                        }).filter(amount => amount !== 0),
+                        dates: fund.transactions
+                            .filter(tx => ['PURCHASE', 'PURCHASE_SIP', 'SWITCH_IN', 'SWITCH_IN_MERGER', 'REDEMPTION', 'SWITCH_OUT', 'SWITCH_OUT_MERGER', 'DIVIDEND_PAYOUT']
+                                .includes(tx.type))
+                            .map(tx => tx.date)
+                    };
+                    // Add current value as the final cashflow
+                    cashflows.amounts.push(Number(fund.value));
+                    cashflows.dates.push(new Date().toISOString().split('T')[0]);
+                    
+                    const xirr = calculateXIRR(cashflows);
+                    const xirrPercentage = xirr ? (xirr * 100).toFixed(2) : 'N/A';
+                    const xirrNumeric = xirr ? (xirr * 100) : 0;
+                    
+                    return `
+                        <tr data-value="${fund.value}" data-returns="${xirrNumeric}" data-name="${fund.schemeName}" data-cost="${fund.cost}">
+                            <td>${fund.schemeName}</td>
+                            <td>${formatCurrency(fund.cost)}</td>
+                            <td>${formatCurrency(fund.value)}</td>
+                            <td><span class="allocation">${allocation}%</span></td>
+                            <td><span class="${xirrNumeric >= 0 ? 'positive' : 'negative'}">${xirrPercentage}${xirrPercentage !== 'N/A' ? '%' : ''}</span></td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            // Recreate charts with filtered data
+            try {
+                const performanceChart = createFundPerformanceChart(filteredFunds);
+                if (performanceChart) chartInstances.push(performanceChart);
+                
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                // For investment flow, use ALL funds (not filtered) to show complete history
+                const yearlyChart = createYearlyInvestmentChart(window.originalFundsData || filteredFunds);
+                if (yearlyChart) chartInstances.push(yearlyChart);
+                
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                const categoryChart = createCategoryDistributionChart(filteredFunds);
+                if (categoryChart) chartInstances.push(categoryChart);
+                
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                const sipChart = createSipVsLumpsumChart(filteredFunds);
+                if (sipChart) chartInstances.push(sipChart);
+                
+                // Create portfolio growth chart asynchronously
+                createPortfolioGrowthChart(filteredFunds).then(portfolioGrowthChart => {
+                    if (portfolioGrowthChart) chartInstances.push(portfolioGrowthChart);
+                }).catch(error => {
+                    console.error('Error updating portfolio growth chart:', error);
+                });
+            } catch (error) {
+                console.error('Error updating charts:', error);
+            }
+        }
+
+        function sortFunds(sortValue) {
+            const [type, direction] = sortValue.split('-');
+            
+            // Sort function that can be reused
+            const sortFunction = (a, b, aValue, bValue) => {
+                if (type === 'name') {
+                    return direction === 'asc'
+                        ? aValue.localeCompare(bValue)
+                        : bValue.localeCompare(aValue);
+                } else {
+                    return direction === 'asc'
+                        ? Number(aValue) - Number(bValue)
+                        : Number(bValue) - Number(aValue);
+                }
+            };
+
+            // Sort allocation table
+            const allocationBody = document.getElementById('allocation-body');
+            if (allocationBody) {
+                const rows = Array.from(allocationBody.getElementsByTagName('tr'));
+                rows.sort((a, b) => {
+                    let aValue, bValue;
+                    if (type === 'name') {
+                        aValue = a.cells[0].textContent;
+                        bValue = b.cells[0].textContent;
+                    } else if (type === 'value') {
+                        aValue = a.dataset.value;
+                        bValue = b.dataset.value;
+                    } else if (type === 'returns') {
+                        aValue = a.dataset.returns;
+                        bValue = b.dataset.returns;
+                    }
+                    return sortFunction(a, b, aValue, bValue);
+                });
+                rows.forEach(row => allocationBody.appendChild(row));
+            }
+
+            // Update performance chart with sorted data
+            const performanceChart = chartInstances.find(chart => 
+                chart.canvas.id === 'fundPerformance'
+            );
+            if (performanceChart && allocationBody) {
+                const sortedRows = Array.from(allocationBody.getElementsByTagName('tr'));
+                
+                performanceChart.data.labels = sortedRows.map(row => 
+                    row.cells[0].textContent.length > 20 ? 
+                    row.cells[0].textContent.substring(0, 20) + '...' : 
+                    row.cells[0].textContent
+                );
+                performanceChart.data.datasets[0].data = sortedRows.map(row => 
+                    Number(row.dataset.cost || 0)
+                );
+                performanceChart.data.datasets[1].data = sortedRows.map(row => 
+                    Number(row.dataset.value || 0)
+                );
+                performanceChart.update();
+            }
+        }
+
+        function filterFunds(filterValue) {
+            // Store current filter value
+            currentFilterValue = filterValue;
+            
+            // Filter allFundsData based on category
+            const filteredFunds = allFundsData.filter(fund => {
+                const schemeName = fund.schemeName.toLowerCase();
+                let fundCategory;
+                
+                if (schemeName.includes('debt') || schemeName.includes('bond') || schemeName.includes('gilt') || 
+                    schemeName.includes('income') || schemeName.includes('credit') || schemeName.includes('liquid') || 
+                    schemeName.includes('ultra short') || schemeName.includes('money market') || 
+                    schemeName.includes('overnight') || schemeName.includes('duration')) {
+                    fundCategory = 'debt';
+                } else {
+                    fundCategory = 'equity';
+                }
+                
+                switch (filterValue) {
+                    case 'equity':
+                        return fundCategory === 'equity';
+                    case 'debt':
+                        return fundCategory === 'debt';
+                    case 'all':
+                    default:
+                        return true;
+                }
+            });
+            
+            // Update charts with filtered data
+            updateChartsWithFilteredData(filteredFunds);
+        }
+
+
+
+        async function createPortfolioGrowthChart(activeFunds) {
+            const ctx = document.getElementById('portfolioGrowth').getContext('2d');
+            
+            // Function to update loading text
+            function updateLoadingText(text) {
+                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                ctx.fillStyle = '#6b7280';
+                ctx.font = '14px system-ui';
+                ctx.textAlign = 'center';
+                ctx.fillText(text, ctx.canvas.width / 2, ctx.canvas.height / 2);
+            }
+            
+            // Collect all transactions with dates
+            const allTransactions = [];
+            const fundData = new Map(); // Track units and cost basis for each fund
+            
+            activeFunds.forEach(fund => {
+                fundData.set(fund.isin, { 
+                    units: 0, 
+                    totalCost: 0,
+                    currentNav: 0,
+                    schemeName: fund.schemeName
+                });
+                
+                fund.transactions.forEach(txn => {
+                    if (txn.date) {
+                        allTransactions.push({
+                            date: new Date(txn.date),
+                            amount: Number(txn.amount || 0),
+                            units: Number(txn.units || 0),
+                            nav: Number(txn.nav || 0),
+                            balance: Number(txn.balance || 0),
+                            type: txn.type,
+                            fundIsin: fund.isin,
+                            schemeName: fund.schemeName
+                        });
+                    }
+                });
+                
+                // Calculate current NAV from fund data
+                const totalUnits = fund.transactions.reduce((sum, txn) => {
+                    if (txn.type === 'PURCHASE_SIP' || txn.type === 'PURCHASE_NEW' || txn.type === 'PURCHASE') {
+                        return sum + Number(txn.units || 0);
+                    } else if (txn.type === 'REDEMPTION') {
+                        return sum - Number(txn.units || 0);
+                    }
+                    return sum;
+                }, 0);
+                
+                if (totalUnits > 0 && Number(fund.value) > 0) {
+                    fundData.get(fund.isin).currentNav = Number(fund.value) / totalUnits;
+                }
+            });
+            
+            // Sort transactions by date
+            allTransactions.sort((a, b) => a.date - b.date);
+            
+            if (allTransactions.length === 0) {
+                return null;
+            }
+            
+            // Build portfolio value over time using MF API NAV data
+            const portfolioHistory = new Map();
+            // Use global NAV cache to avoid duplicate API calls across chart recreations
+            
+            // Function to get scheme code from fund data using AMFI code
+            function getSchemeCode(fund) {
+                // Use AMFI code if available
+                if (fund.amfi) {
+                    return fund.amfi;
+                }
+                // Fallback to schemeCode if available
+                if (fund.schemeCode) {
+                    return fund.schemeCode;
+                }
+                return null;
+            }
+            
+            // Pre-fetch all NAV data for funds that have scheme codes
+            // Use batched parallel requests to speed up loading while not overwhelming the API
+            const schemeCodesToFetch = activeFunds
+                .map(fund => getSchemeCode(fund))
+                .filter(schemeCode => schemeCode && !globalNavCache.has(schemeCode));
+            
+            if (schemeCodesToFetch.length > 0) {
+                const BATCH_SIZE = 8; // Process 8 API calls in parallel
+                const BATCH_DELAY = 5; // 5ms delay between batches
+                
+                console.log(`Fetching NAV data for ${schemeCodesToFetch.length} funds in batches of ${BATCH_SIZE}...`);
+                updateLoadingText(`Fetching data for ${schemeCodesToFetch.length} funds...`);
+                
+                for (let i = 0; i < schemeCodesToFetch.length; i += BATCH_SIZE) {
+                    const batch = schemeCodesToFetch.slice(i, i + BATCH_SIZE);
+                    const currentBatch = Math.floor(i/BATCH_SIZE) + 1;
+                    const totalBatches = Math.ceil(schemeCodesToFetch.length / BATCH_SIZE);
+                    
+                    updateLoadingText(`Loading batch ${currentBatch}/${totalBatches}...`);
+                    
+                    // Process batch in parallel
+                    const batchPromises = batch.map(async (schemeCode) => {
+                        try {
+                            const navMap = await getAllHistoricalNAV(schemeCode);
+                            globalNavCache.set(schemeCode, navMap);
+                            return { schemeCode, success: true };
+                        } catch (error) {
+                            console.warn(`Failed to fetch NAV for scheme ${schemeCode}:`, error);
+                            globalNavCache.set(schemeCode, null);
+                            return { schemeCode, success: false };
+                        }
+                    });
+                    
+                    // Wait for current batch to complete
+                    const results = await Promise.all(batchPromises);
+                    console.log(`Batch ${Math.floor(i/BATCH_SIZE) + 1} completed:`, results.map(r => `${r.schemeCode}:${r.success ? 'OK' : 'FAIL'}`).join(', '));
+                    
+                    // Add delay between batches (except for the last batch)
+                    if (i + BATCH_SIZE < schemeCodesToFetch.length) {
+                        await new Promise(resolve => setTimeout(resolve, BATCH_DELAY));
+                    }
+                }
+                
+                console.log('All NAV data fetching completed!');
+                updateLoadingText('Processing portfolio data...');
+            } else {
+                updateLoadingText('Processing portfolio data...');
+            }
+            
+            // Function to get NAV for a specific month with caching
+            function getCachedMonthNAV(fund, year, month, transactionsInMonth) {
+                const schemeCode = getSchemeCode(fund);
+                const navMap = schemeCode ? globalNavCache.get(schemeCode) : null;
+                
+                // Only use NAV from pre-fetched AMFI data
+                if (navMap) {
+                    const nav = getMonthEndNAVFromCache(navMap, year, month);
+                    return nav || 0; // Return 0 if no NAV found
+                }
+                
+                // If no AMFI data available, return 0
+                return 0;
+            }
+            
+            // Get unique months from all transactions
+            const uniqueMonths = [...new Set(allTransactions.map(txn => {
+                return `${txn.date.getFullYear()}-${String(txn.date.getMonth() + 1).padStart(2, '0')}`;
+            }))].sort();
+            
+            // Build portfolio history month by month using API NAV data
+            for (const monthKey of uniqueMonths) {
+                const [year, month] = monthKey.split('-').map(Number);
+                
+                // Calculate units held at end of this month using balance field
+                const monthEndDate = new Date(year, month, 0); // Get end of month
+                
+                // For each fund, find the last transaction with balance up to this month
+                const monthEndFundData = new Map();
+                
+                // Get all unique funds that had transactions up to this month
+                const allFundIsins = new Set();
+                allTransactions.forEach(txn => {
+                    if (txn.date <= monthEndDate) {
+                        allFundIsins.add(txn.fundIsin);
+                    }
+                });
+                
+                for (const isin of allFundIsins) {
+                    // Get all transactions for this fund up to the end of this month
+                    const fundTransactions = allTransactions.filter(txn => 
+                        txn.fundIsin === isin && txn.date <= monthEndDate
+                    );
+                    
+                    if (fundTransactions.length === 0) continue;
+                    
+                    // Find the last transaction with a balance field
+                    const lastTransactionWithBalance = fundTransactions
+                        .filter(txn => txn.balance !== null && txn.balance !== undefined)
+                        .sort((a, b) => b.date - a.date)[0];
+                    
+                    if (lastTransactionWithBalance) {
+                        // Use the balance field as the exact units held
+                        const unitsHeld = Number(lastTransactionWithBalance.balance || 0);
+                        
+                        if (unitsHeld > 0) {
+                            // Calculate total investment using FIFO method as per freefincal article
+                            let totalInvestment = 0;
+                            const purchaseLots = []; // Track individual purchase lots for FIFO
+                            
+                            for (const txn of fundTransactions) {
+                                const amount = Number(txn.amount || 0);
+                                const units = Number(txn.units || 0);
+                                const nav = Number(txn.nav || 0);
+                                
+                                if (txn.type === 'PURCHASE_SIP' || txn.type === 'PURCHASE_NEW' || txn.type === 'PURCHASE') {
+                                    // Add new purchase lot
+                                    purchaseLots.push({
+                                        units: units,
+                                        amount: amount,
+                                        nav: nav || (amount / units), // Use NAV or calculate from amount/units
+                                        date: txn.date
+                                    });
+                                    totalInvestment += amount;
+                                } else if (txn.type === 'SWITCH_IN' || txn.type === 'SWITCH_IN_MERGER') {
+                                    // Switch in - treat as investment (new purchase lot)
+                                    purchaseLots.push({
+                                        units: units,
+                                        amount: amount,
+                                        nav: nav || (amount / units),
+                                        date: txn.date
+                                    });
+                                    totalInvestment += amount;
+                                } else if (txn.type === 'REDEMPTION' || txn.type === 'SWITCH_OUT' || txn.type === 'SWITCH_OUT_MERGER') {
+                                    // FIFO redemption - reduce from oldest lots first
+                                    let unitsToRedeem = units;
+                                    let capitalInvested = 0;
+                                    
+                                    while (unitsToRedeem > 0 && purchaseLots.length > 0) {
+                                        const oldestLot = purchaseLots[0];
+                                        
+                                        if (oldestLot.units <= unitsToRedeem) {
+                                            // Fully redeem this lot
+                                            capitalInvested += oldestLot.amount;
+                                            unitsToRedeem -= oldestLot.units;
+                                            purchaseLots.shift(); // Remove the lot
+                                        } else {
+                                            // Partially redeem this lot
+                                            const redeemRatio = unitsToRedeem / oldestLot.units;
+                                            const partialAmount = oldestLot.amount * redeemRatio;
+                                            capitalInvested += partialAmount;
+                                            
+                                            // Update the lot
+                                            oldestLot.units -= unitsToRedeem;
+                                            oldestLot.amount -= partialAmount;
+                                            unitsToRedeem = 0;
+                                        }
+                                    }
+                                    
+                                    // Reduce total investment by the capital invested portion only
+                                    totalInvestment = Math.max(0, totalInvestment - capitalInvested);
+                                }
+                            }
+                            
+                            const fund = activeFunds.find(f => f.isin === isin);
+                            const schemeName = fund?.schemeName || fundTransactions[0]?.schemeName || 'Unknown Fund';
+                            
+                            monthEndFundData.set(isin, {
+                                units: unitsHeld,
+                                currentInvestment: totalInvestment,
+                                schemeName: schemeName
+                            });
+                        }
+                    }
+                }
+                
+                // Calculate portfolio value for this month using API NAV
+                let totalInvestment = 0;
+                let totalCurrentValue = 0;
+                
+                // Get transactions for this specific month for NAV fallback
+                const transactionsInThisMonth = allTransactions.filter(txn => {
+                    const txnMonthKey = `${txn.date.getFullYear()}-${String(txn.date.getMonth() + 1).padStart(2, '0')}`;
+                    return txnMonthKey === monthKey;
+                });
+                
+                for (const [isin, data] of monthEndFundData) {
+                    totalInvestment += data.currentInvestment;
+                    if (data.units > 0) {
+                        // Find fund data from activeFunds, or create a minimal object for inactive funds
+                        let fund = activeFunds.find(f => f.isin === isin);
+                        if (!fund) {
+                            // For inactive funds, create minimal fund object with scheme name
+                            fund = { isin, schemeName: data.schemeName, amfi: null, schemeCode: null };
+                        }
+                        
+                        const nav = getCachedMonthNAV(fund, year, month, []);
+                        
+                        if (nav > 0) {
+                            totalCurrentValue += data.units * nav;
+                        }
+                    }
+                }
+                
+                portfolioHistory.set(monthKey, {
+                    date: new Date(year, month - 1, 1),
+                    investment: totalInvestment,
+                    value: totalCurrentValue
+                });
+                
+                // Debug logging for investment calculation
+                console.log(`${monthKey}: Investment=₹${(totalInvestment/100000).toFixed(2)}L, Value=₹${(totalCurrentValue/100000).toFixed(2)}L, Funds=${monthEndFundData.size}`);
+            }
+            
+            // Convert to array and sort
+            const chartData = Array.from(portfolioHistory.entries())
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([monthKey, data]) => data);
+            
+            // Ensure final portfolio value matches actual current portfolio value
+            if (chartData.length > 0) {
+                const totalCurrentValue = activeFunds.reduce((sum, fund) => sum + Number(fund.value), 0);
+                
+                const lastPoint = chartData[chartData.length - 1];
+                // Only update the value, keep the calculated investment as-is for consistency
+                lastPoint.value = totalCurrentValue;
+            }
+            
+            // Create gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, 'rgba(16, 185, 129, 0.3)');
+            gradient.addColorStop(1, 'rgba(16, 185, 129, 0.05)');
+            
+            return new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartData.map(d => d.date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' })),
+                    datasets: [
+                        {
+                            label: 'Investment Amount',
+                            data: chartData.map(d => d.investment),
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Portfolio Value',
+                            data: chartData.map(d => d.value),
+                            borderColor: '#10b981',
+                            backgroundColor: gradient,
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: { 
+                                color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary'),
+                                usePointStyle: true,
+                                pointStyle: 'circle'
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            titleColor: 'white',
+                            bodyColor: 'white',
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.parsed.y;
+                                    let formattedValue;
+                                    if (value >= 10000000) {
+                                        formattedValue = '₹' + (value / 10000000).toFixed(2) + 'Cr';
+                                    } else if (value >= 100000) {
+                                        formattedValue = '₹' + (value / 100000).toFixed(2) + 'L';
+                                    } else if (value >= 1000) {
+                                        formattedValue = '₹' + (value / 1000).toFixed(1) + 'K';
+                                    } else {
+                                        formattedValue = '₹' + value.toLocaleString('en-IN');
+                                    }
+                                    return context.dataset.label + ': ' + formattedValue;
+                                }
+                            }
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: getComputedStyle(document.documentElement).getPropertyValue('--border-color')
+                            },
+                            ticks: {
+                                color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary')
+                            }
+                        },
+                        y: {
+                            grid: {
+                                color: getComputedStyle(document.documentElement).getPropertyValue('--border-color')
+                            },
+                            ticks: {
+                                color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary'),
+                                callback: function(value) {
+                                    if (value >= 10000000) {
+                                        return '₹' + (value / 10000000).toFixed(1) + 'Cr';
+                                    } else if (value >= 100000) {
+                                        return '₹' + (value / 100000).toFixed(1) + 'L';
+                                    } else if (value >= 1000) {
+                                        return '₹' + (value / 1000).toFixed(0) + 'K';
+                                    } else {
+                                        return '₹' + value.toLocaleString('en-IN');
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createFundPerformanceChart(funds) {
+            const ctx = document.getElementById('fundPerformance').getContext('2d');
+            
+            // Create gradient backgrounds
+            const gradientBlue = ctx.createLinearGradient(0, 0, 0, 400);
+            gradientBlue.addColorStop(0, 'rgba(59, 130, 246, 0.8)');
+            gradientBlue.addColorStop(1, 'rgba(59, 130, 246, 0.4)');
+            
+            const gradientGreen = ctx.createLinearGradient(0, 0, 0, 400);
+            gradientGreen.addColorStop(0, 'rgba(16, 185, 129, 0.8)');
+            gradientGreen.addColorStop(1, 'rgba(16, 185, 129, 0.4)');
+
+            return new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: funds.map(fund => fund.schemeName.length > 20 ? 
+                        fund.schemeName.substring(0, 20) + '...' : fund.schemeName),
+                    datasets: [
+                        {
+                            label: 'Investment',
+                            data: funds.map(fund => Number(fund.cost)),
+                            backgroundColor: gradientBlue,
+                            borderColor: '#3b82f6',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            borderSkipped: false,
+                        },
+                        {
+                            label: 'Current Value',
+                            data: funds.map(fund => Number(fund.value)),
+                            backgroundColor: gradientGreen,
+                            borderColor: '#10b981',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            borderSkipped: false,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 20,
+                                font: {
+                                    family: 'Inter',
+                                    size: 12,
+                                    weight: '500'
+                                },
+                                color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary')
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            titleColor: 'white',
+                            bodyColor: 'white',
+                            borderColor: '#e5e7eb',
+                            borderWidth: 1,
+                            cornerRadius: 8,
+                            padding: 12,
+                            callbacks: {
+                                label: function(context) {
+                                    const fund = funds[context.dataIndex];
+                                    const value = formatCurrency(context.raw);
+                                    const returns = ((Number(fund.value) - Number(fund.cost)) / Number(fund.cost) * 100).toFixed(2);
+                                    return [
+                                        `${context.dataset.label}: ${value}`,
+                                        ...(context.dataset.label === 'Current Value' ? [`Returns: ${returns}%`] : [])
+                                    ];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: getComputedStyle(document.documentElement).getPropertyValue('--border-color'),
+                                drawBorder: false
+                            },
+                            ticks: {
+                                font: {
+                                    family: 'Inter',
+                                    size: 11
+                                },
+                                color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary'),
+                                callback: function(value) {
+                                    return '₹' + (value >= 100000 ? 
+                                        (value / 100000).toFixed(1) + 'L' : 
+                                        value.toLocaleString('en-IN'));
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                font: {
+                                    family: 'Inter',
+                                    size: 10
+                                },
+                                color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary'),
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createYearlyInvestmentChart(funds) {
+            // For investment flow, include ALL funds that have transactions (not just active ones)
+            const fundsWithTransactions = funds.filter(fund => 
+                fund.transactions && fund.transactions.length > 0
+            );
+            
+            const yearlyInvestments = {};
+            let totalTransactionsProcessed = 0;
+            
+            fundsWithTransactions.forEach(fund => {
+                fund.transactions.forEach(tx => {
+                    totalTransactionsProcessed++;
+                    const date = new Date(tx.date);
+                    
+                    // Financial Year calculation (Apr 1 to Mar 31)
+                    // If month is Apr(3) to Dec(11) - same calendar year is FY start
+                    // If month is Jan(0) to Mar(2) - previous calendar year is FY start
+                    let fyStartYear;
+                    if (date.getMonth() >= 3) { // Apr(3) to Dec(11)
+                        fyStartYear = date.getFullYear();
+                    } else { // Jan(0) to Mar(2)
+                        fyStartYear = date.getFullYear() - 1;
+                    }
+                    
+                    const fyKey = `FY${fyStartYear}-${(fyStartYear + 1).toString().slice(2)}`;
+                    
+                    if (!yearlyInvestments[fyKey]) {
+                        yearlyInvestments[fyKey] = 0;
+                    }
+                    
+                    // Handle different transaction types - Include all actual cash flows
+                    let amount = 0;
+                    switch (tx.type) {
+                        case 'PURCHASE':
+                        case 'PURCHASE_SIP':
+                            // Only count actual purchases with new money
+                            amount = Number(tx.amount || 0);
+                            yearlyInvestments[fyKey] += amount;
+                            break;
+                        case 'REDEMPTION':
+                            // Redemptions reduce net investment (money taken out)
+                            // Check if amount is already negative, if so use as-is, otherwise make negative
+                            const redemptionAmount = Number(tx.amount || 0);
+                            amount = redemptionAmount > 0 ? -redemptionAmount : redemptionAmount;
+                            yearlyInvestments[fyKey] += amount;
+                            break;
+                        case 'SWITCH_IN':
+                        case 'SWITCH_IN_MERGER':
+                            // Switch in - money coming into this fund (count as investment)
+                            amount = Number(tx.amount || 0);
+                            yearlyInvestments[fyKey] += amount;
+                            break;
+                        case 'SWITCH_OUT':
+                        case 'SWITCH_OUT_MERGER':
+                            // Switch out - money leaving this fund (reduce investment)
+                            const switchOutAmount = Number(tx.amount || 0);
+                            amount = switchOutAmount > 0 ? -switchOutAmount : switchOutAmount;
+                            yearlyInvestments[fyKey] += amount;
+                            break;
+                        case 'DIVIDEND_REINVESTMENT':
+                            // Dividend reinvestment - not new money but reinvested returns
+                            // Count as investment but mark clearly
+                            amount = Number(tx.amount || 0);
+                            yearlyInvestments[fyKey] += amount;
+                            break;
+                        case 'DIVIDEND_PAYOUT':
+                            // Dividend payout - money received, not affecting investment
+                            // Don't count this
+                            break;
+                        // Taxes and other transactions don't affect net investment
+                        case 'STAMP_DUTY_TAX':
+                        case 'TDS_TAX':
+                        case 'STT_TAX':
+                        case 'MISC':
+                        case 'SEGREGATION':
+                            break;
+                        default:
+                            // For any unhandled transaction types, check if it has amount
+                            if (tx.amount && tx.type && tx.type.includes('PURCHASE')) {
+                                amount = Number(tx.amount);
+                                yearlyInvestments[fyKey] += amount;
+                            }
+                            break;
+                    }
+                });
+            });            const ctx = document.getElementById('yearlyInvestment').getContext('2d');
+            
+            // Sort by financial year properly
+            const sortedEntries = Object.entries(yearlyInvestments).sort(([a], [b]) => a.localeCompare(b));
+            const sortedLabels = sortedEntries.map(([key]) => key);
+            const sortedData = sortedEntries.map(([, value]) => value);
+            
+            // Create gradient for positive values
+            const gradientGreen = ctx.createLinearGradient(0, 0, 0, 400);
+            gradientGreen.addColorStop(0, 'rgba(16, 185, 129, 0.8)');
+            gradientGreen.addColorStop(1, 'rgba(16, 185, 129, 0.2)');
+            
+            const gradientRed = ctx.createLinearGradient(0, 0, 0, 400);
+            gradientRed.addColorStop(0, 'rgba(239, 68, 68, 0.8)');
+            gradientRed.addColorStop(1, 'rgba(239, 68, 68, 0.2)');
+            
+            return new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: sortedLabels,
+                    datasets: [{
+                        label: 'Net Investment',
+                        data: sortedData,
+                        backgroundColor: function(context) {
+                            const value = context.raw;
+                            return value >= 0 ? gradientGreen : gradientRed;
+                        },
+                        borderColor: function(context) {
+                            const value = context.raw;
+                            return value >= 0 ? '#10b981' : '#ef4444';
+                        },
+                        borderWidth: 1,
+                        borderRadius: 6,
+                        borderSkipped: false,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            titleColor: 'white',
+                            bodyColor: 'white',
+                            borderColor: '#e5e7eb',
+                            borderWidth: 1,
+                            cornerRadius: 8,
+                            padding: 12,
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.raw;
+                                    return value >= 0 
+                                        ? `Net Investment: ${formatCurrency(value)}`
+                                        : `Net Redemption: ${formatCurrency(Math.abs(value))}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: getComputedStyle(document.documentElement).getPropertyValue('--border-color'),
+                                drawBorder: false
+                            },
+                            ticks: {
+                                font: {
+                                    family: 'Inter',
+                                    size: 11
+                                },
+                                color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary'),
+                                callback: function(value) {
+                                    return '₹' + (value >= 100000 ? 
+                                        (value / 100000).toFixed(1) + 'L' : 
+                                        value.toLocaleString('en-IN'));
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                font: {
+                                    family: 'Inter',
+                                    size: 11
+                                },
+                                color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary')
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createCategoryDistributionChart(funds) {
+            const ctx = document.getElementById('categoryDistribution').getContext('2d');
+            
+            // Extract category information from fund names - simplified to Equity/Debt only
+            const categoryMap = {};
+            funds.forEach(fund => {
+                const name = fund.schemeName.toLowerCase();
+                
+                let category = 'Equity'; // Default to equity
+                if (name.includes('debt') || name.includes('bond') || name.includes('gilt') || 
+                    name.includes('income') || name.includes('credit') || name.includes('liquid') || 
+                    name.includes('ultra short') || name.includes('money market') || 
+                    name.includes('treasury') || name.includes('corporate bond')) {
+                    category = 'Debt';
+                }
+                
+                if (!categoryMap[category]) {
+                    categoryMap[category] = 0;
+                }
+                categoryMap[category] += Number(fund.value);
+            });
+
+            const categories = Object.keys(categoryMap);
+            const values = Object.values(categoryMap);
+            const total = values.reduce((sum, value) => sum + value, 0);
+            
+            // Create labels with percentages
+            const labelsWithPercentages = categories.map((category, i) => {
+                const percentage = ((values[i] / total) * 100).toFixed(1);
+                return `${category} (${percentage}%)`;
+            });
+            
+            // Better color mapping for categories
+            const colorMap = {
+                'Equity': '#10b981', // Green for Equity
+                'Debt': '#3b82f6',   // Blue for Debt
+                'Hybrid': '#f59e0b', // Orange for Hybrid (if any)
+                'Other': '#8b5cf6'   // Purple for Others
+            };
+            
+            const backgroundColors = categories.map(category => colorMap[category] || '#6b7280');
+            const borderColors = categories.map(category => colorMap[category] || '#6b7280');
+
+            return new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labelsWithPercentages,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: backgroundColors,
+                        borderWidth: 2,
+                        borderColor: '#ffffff',
+                        hoverBackgroundColor: backgroundColors.map(color => color + 'CC'), // Add transparency on hover
+                        hoverBorderWidth: 3,
+                        hoverBorderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '50%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 15,
+                                font: {
+                                    family: 'Inter',
+                                    size: 12,
+                                    weight: '500'
+                                },
+                                color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary')
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            titleColor: 'white',
+                            bodyColor: 'white',
+                            borderColor: getComputedStyle(document.documentElement).getPropertyValue('--border-color'),
+                            borderWidth: 1,
+                            cornerRadius: 8,
+                            padding: 12,
+                            callbacks: {
+                                label: function(context) {
+                                    const total = context.dataset.data.reduce((sum, value) => sum + value, 0);
+                                    const percentage = ((context.raw / total) * 100).toFixed(1);
+                                    return [
+                                        `${context.label}`,
+                                        `Value: ${formatCurrency(context.raw)}`,
+                                        `Share: ${percentage}%`
+                                    ];
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createSipVsLumpsumChart(funds) {
+            const ctx = document.getElementById('sipVsLumpsum').getContext('2d');
+            
+            let sipAmount = 0;
+            let lumpsumAmount = 0;
+            
+            funds.forEach(fund => {
+                fund.transactions.forEach(tx => {
+                    if (tx.type === 'PURCHASE_SIP') {
+                        sipAmount += Number(tx.amount);
+                    } else if (tx.type === 'PURCHASE') {
+                        lumpsumAmount += Number(tx.amount);
+                    }
+                });
+            });
+
+            return new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['SIP Investments', 'Lumpsum Investments'],
+                    datasets: [{
+                        data: [sipAmount, lumpsumAmount],
+                        backgroundColor: ['#10b981', '#3b82f6'],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '50%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 20,
+                                font: {
+                                    family: 'Inter',
+                                    size: 12,
+                                    weight: '500'
+                                },
+                                color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary')
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            titleColor: 'white',
+                            bodyColor: 'white',
+                            borderColor: getComputedStyle(document.documentElement).getPropertyValue('--border-color'),
+                            borderWidth: 1,
+                            cornerRadius: 8,
+                            padding: 12,
+                            callbacks: {
+                                label: function(context) {
+                                    const total = sipAmount + lumpsumAmount;
+                                    const percentage = total > 0 ? ((context.raw / total) * 100).toFixed(1) : '0';
+                                    return [
+                                        `${context.label}`,
+                                        `Amount: ${formatCurrency(context.raw)}`,
+                                        `Share: ${percentage}%`
+                                    ];
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        async function handleUpload() {
+            const fileInput = document.getElementById('file-input');
+            const passwordInput = document.getElementById('password');
+            const file = fileInput.files[0];
+            const password = passwordInput.value;
+            
+            if (!file || !password) {
+                alert('Please select a file and enter the password!');
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('pdfFile', file);
+                formData.append('password', password);
+                
+                const response = await fetch('/parse', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                if (!result.success) {
+                    throw new Error(result.error || 'Failed to parse statement');
+                }
+                displayResults(result.data);
+            } catch (error) {
+                console.error('Error in upload:', error);
+                document.getElementById('results').innerHTML = `
+                    <div style="color: red; padding: 16px; background: white; border-radius: 8px; margin-top: 16px;">
+                        Error in upload: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Wait for the DOM to be fully loaded before setting up event handlers
+        document.addEventListener('DOMContentLoaded', function() {
+            const uploadForm = document.getElementById('upload-form-element');
+            const fileInput = document.getElementById('file-input');
+            const fileDisplay = document.getElementById('file-display');
+            const parseBtn = document.getElementById('parse-btn');
+            const btnText = document.getElementById('btn-text');
+            const btnSpinner = document.getElementById('btn-spinner');
+
+            // File input change handler
+            fileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                updateFileDisplay(file);
+            });
+
+            // Drag and drop handlers
+            fileDisplay.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                fileDisplay.style.borderColor = 'var(--primary-color)';
+                fileDisplay.style.backgroundColor = '#f0f9ff';
+            });
+
+            fileDisplay.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                fileDisplay.style.borderColor = 'var(--border-color)';
+                fileDisplay.style.backgroundColor = '#f9fafb';
+            });
+
+            fileDisplay.addEventListener('drop', function(e) {
+                e.preventDefault();
+                fileDisplay.style.borderColor = 'var(--border-color)';
+                fileDisplay.style.backgroundColor = '#f9fafb';
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    const file = files[0];
+                    if (file.type === 'application/pdf') {
+                        fileInput.files = files;
+                        updateFileDisplay(file);
+                    } else {
+                        showError('Please select a PDF file.');
+                    }
+                }
+            });
+
+            // Form submit handler
+            uploadForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                handleUpload();
+            });
+
+            function updateFileDisplay(file) {
+                if (file) {
+                    const fileName = file.name;
+                    const fileSize = (file.size / (1024 * 1024)).toFixed(2);
+                    fileDisplay.innerHTML = `
+                        <div>
+                            <div style="color: var(--success-color); font-weight: 500;">
+                                ✅ ${fileName}
+                            </div>
+                            <div style="font-size: 0.875rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                                File size: ${fileSize} MB
+                            </div>
+                        </div>
+                    `;
+                    fileDisplay.classList.add('has-file');
+                } else {
+                    fileDisplay.innerHTML = `
+                        <div>
+                            <div>📁 Choose PDF file or drag and drop</div>
+                            <div style="font-size: 0.875rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                                Maximum file size: 10MB
+                            </div>
+                        </div>
+                    `;
+                    fileDisplay.classList.remove('has-file');
+                }
+            }
+
+            function showError(message) {
+                const resultsDiv = document.getElementById('results');
+                resultsDiv.innerHTML = `
+                    <div class="error-message">
+                        ❌ ${message}
+                    </div>
+                `;
+            }
+
+            function showSuccess(message) {
+                const resultsDiv = document.getElementById('results');
+                resultsDiv.innerHTML = `
+                    <div class="success-message">
+                        ✅ ${message}
+                    </div>
+                `;
+            }
+
+            function setLoadingState(loading) {
+                if (loading) {
+                    parseBtn.disabled = true;
+                    btnText.style.display = 'none';
+                    btnSpinner.style.display = 'inline-block';
+                    parseBtn.innerHTML = `
+                        <div class="spinner"></div>
+                        <span>Processing...</span>
+                    `;
+                } else {
+                    parseBtn.disabled = false;
+                    btnText.style.display = 'inline';
+                    btnSpinner.style.display = 'none';
+                    parseBtn.innerHTML = `
+                        <span id="btn-text">🚀 Parse Statement</span>
+                        <div class="spinner" id="btn-spinner" style="display: none;"></div>
+                    `;
+                }
+            }
+
+            // Enhanced upload function
+            window.handleUpload = async function() {
+                const file = fileInput.files[0];
+                const password = document.getElementById('password').value;
+                
+                if (!file) {
+                    showError('Please select a PDF file.');
+                    return;
+                }
+
+                if (!password) {
+                    showError('Please enter the statement password.');
+                    return;
+                }
+
+                if (file.size > 10 * 1024 * 1024) {
+                    showError('File size must be less than 10MB.');
+                    return;
+                }
+
+                try {
+                    setLoadingState(true);
+                    
+                    const formData = new FormData();
+                    formData.append('pdfFile', file);
+                    formData.append('password', password);
+                    
+                    const response = await fetch('/parse', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
+                    }
+                    
+                    const result = await response.json();
+                    
+                    if (!result.success) {
+                        throw new Error(result.error || 'Failed to parse statement');
+                    }
+                    
+                    showSuccess('Statement parsed successfully! 🎉');
+                    setTimeout(() => {
+                        displayResults(result.data);
+                    }, 500);
+                    
+                } catch (error) {
+                    console.error('Error in upload:', error);
+                    showError(`Upload failed: ${error.message}`);
+                } finally {
+                    setLoadingState(false);
+                }
+            };
+        });
+    </script>
+</body>
+</main>
+<footer style="text-align:center; margin-top:2rem; color:var(--text-primary); font-size:1rem; font-weight:500; background:rgba(59,130,246,0.07); padding:1rem 0; border-radius:0.5rem;">
+    This chart was generated using 
+    <a href="https://github.com/lolwatks/portfolio-analysis" target="_blank" rel="noopener noreferrer" style="color:#2563eb; text-decoration:underline; font-weight:700; background:rgba(255,255,255,0.7); padding:0.1em 0.4em; border-radius:0.3em;">https://github.com/lolwatks/portfolio-analysis</a>
+</footer>
+</html>
