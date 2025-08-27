@@ -1,0 +1,28 @@
+{
+  "name": "pf",
+  "version": "1.0.0",
+  "description": "Mutual Fund ECAS Statement Parser and Visualizer",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node --experimental-specifier-resolution=node dist/index.js",
+    "dev": "tsx src/index.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.15.0",
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "@types/express": "^5.0.3",
+    "@types/multer": "^2.0.0",
+    "express": "^5.1.0",
+    "multer": "^2.0.2"
+  }
+}
